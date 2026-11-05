@@ -2,6 +2,18 @@
 
 These are the evidence-based updates prepared for the GitHub Issues and Project Board. Before posting, the live repository was verified at main commit `ba51823942ed4fded6eb9ecf28b6569ced4f193b`: Issue #4 was open, Issues #5 and #6 were closed with empty descriptions, and all three Project items displayed **Todo**. Assignees were not inferred.
 
+## Live update record
+
+The following changes were applied after the branch and evidence were uploaded:
+
+- [PR #7](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/pull/7) opened from `tutor-review-2026-11-05`.
+- [Issue #4](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/4) received the UI/evidence progress comment and moved from **Todo** to **In progress**; it remains open.
+- [Issue #5](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/5) received the playable keyboard-prototype evidence comment and its closed card moved from **Todo** to **Done**.
+- [Issue #6](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/6) received a camera-evidence limitation comment and its closed card moved from **Todo** to **Done**.
+- [Issue #8](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/8) was created for real webcam, MediaPipe, two-hand, and pinch validation; it was added to the Project Board as **Todo**.
+- [05 Nov Tutor Review card](https://github.com/orgs/sd5913/projects/8?pane=issue&itemId=286847119) was updated with live build, PR, report, screenshots, review record, blocker, and #8 links; status moved from **Todo** to **Review**.
+- Tutor feedback and owners remain **Pending**. Project visibility was not changed.
+
 ## Existing Issue #4 — Design Game UI and Visual Assets
 
 **Recommended action:** Add the following progress comment to Issue #4. Keep it open until the acceptance criteria are demonstrated; assign the person responsible for UI/art only after confirming team responsibilities.

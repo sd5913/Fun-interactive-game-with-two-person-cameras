@@ -58,7 +58,7 @@ Camera mode maps one hand in each half of a shared webcam to the same input loop
 | P2 independent movement | _Record result_ | Pending verification |
 | Webcam preview + two-hand pinch | _Record real-device result_ | Pending verification |
 | PR / commit | [PR #7](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/pull/7) · [commit `55d840c`](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/commit/55d840c6afa2f16ada045947f79818e449492121) | Open for review |
-| Project item / Issues | [05 Nov review card](https://github.com/orgs/sd5913/projects/8?pane=issue&itemId=286847119) · [#4](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/4) · [#5](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/5) · [#6](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/6) | Live links verified; owners still to be confirmed |
+| Project item / Issues | [05 Nov review card](https://github.com/orgs/sd5913/projects/8?pane=issue&itemId=286847119) · [#4](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/4) · [#5](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/5) · [#6](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/6) · [#8 camera validation](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/8) | Live links verified; owners still to be confirmed |
 
 ## Current blocker / question for the tutor
 
