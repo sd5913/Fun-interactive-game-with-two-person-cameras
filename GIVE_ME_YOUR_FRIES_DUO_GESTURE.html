@@ -15,7 +15,7 @@ button,.upload{font:inherit;cursor:pointer;font-size:12px;font-weight:900;border
 .livebox.active{display:block}.livebox video,.livebox canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.livebox video{transform:scaleX(-1)}.livebox canvas{pointer-events:none}
 .camBadge{position:absolute;left:4px;right:4px;top:4px;background:#1c344acc;color:#fff9e6;font-size:10px;font-weight:900;padding:3px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .camLabels{position:absolute;bottom:2px;left:4px;right:4px;display:flex;justify-content:space-between;font-size:10px;font-weight:900;text-shadow:0 1px 3px #102538;color:#fff}
-.cameraNote{background:#fff4d5;border:2px dashed #d49e67;border-radius:10px;padding:8px 11px;font-size:12px;line-height:1.55;margin-top:8px;color:#72553f}
+.cameraFeedback{margin-top:4px;font-size:11px;line-height:1.5;color:#47726b;font-weight:800;max-width:700px}.cameraFeedback.error{color:#bf504a}.cameraNote{background:#fff4d5;border:2px dashed #d49e67;border-radius:10px;padding:8px 11px;font-size:12px;line-height:1.55;margin-top:8px;color:#72553f}
 .helpFloat{position:absolute;left:9px;bottom:12px;z-index:2;background:#fff5dbdd;border:2px solid #30475a;border-radius:9px;font-size:10px;font-weight:850;padding:6px 9px;pointer-events:none;max-width:61%}
 .keycard.camCard{background:#def3e9}
 @media(max-width:700px){.livebox{width:122px;height:94px;right:5px;top:7px}.camBadge{font-size:8px}.camLabels{font-size:8px}.helpFloat{font-size:8px;padding:4px}}
@@ -45,7 +45,7 @@ button,.upload{font:inherit;cursor:pointer;font-size:12px;font-weight:900;border
 <div class="buttons"><button class="go" id="goCamera">📷 双人摄像头开始</button><button class="go" id="goKeyboard" style="background:#e1f2e9;color:#294354">⌨ 先用键盘试玩</button></div>
 <p class="cameraNote" id="cameraNote">📷 请在 Chrome 的 localhost 或 HTTPS 地址打开。两只手识别首次联网加载 MediaPipe，若未成功会保留键盘试玩。</p>
 </section></div></div>
-<div class="foot"><div><div class="status" id="message">🍟 两个人亲自飞过去捣乱！没有派遣海鸥。</div><div class="tiny"><b>手势：</b>左右半屏各一只手 · 捏合抢 / 搬薯条盒 · 跨区撞人。<b>键盘备用：</b>P1 WASD + F，P2 方向键 + K。<span id="audioStatus">点击开始激活音效</span></div></div><div><b id="clockText">ROUND 1 / 3 · 65s</b><div class="roundBadges" id="badges"><i class="on"></i><i></i><i></i></div></div></div>
+<div class="foot"><div><div class="status" id="message">🍟 两个人亲自飞过去捣乱！没有派遣海鸥。</div><div class="cameraFeedback" id="cameraFeedback" role="status" aria-live="polite">📷 Camera optional. Keyboard mode is ready even when the webcam is unavailable.</div><div class="tiny"><b>手势：</b>左右半屏各一只手 · 捏合抢 / 搬薯条盒 · 跨区撞人。<b>键盘备用：</b>P1 WASD + F，P2 方向键 + K。<span id="audioStatus">点击开始激活音效</span></div></div><div><b id="clockText">ROUND 1 / 3 · 65s</b><div class="roundBadges" id="badges"><i class="on"></i><i></i><i></i></div></div></div>
 </div></main>
 <script>
 (()=>{
@@ -68,7 +68,7 @@ function announce(s){$('message').textContent=s}
 function updateHUD(){players.forEach((p,i)=>{const j=i+1; $('score'+j).textContent=`${p.score} (总 ${p.total})`;$('carry'+j).textContent=p.carry;$('hp'+j).textContent='♥'.repeat(Math.max(0,p.hp))+'♡'.repeat(3-Math.max(0,p.hp));$('action'+j).textContent=p.dragging!=null?'📦 正在搬薯条':p.stun>0?'💫 被撞晕':p.auto?'🏠 回巢交货':p.diving?'🤏 俯冲中':controlMode==='camera'?(p.seen?'🖐️ 手已识别':'✋ 等待手入镜'):'⌨ 键盘操控';$('round'+j).textContent=`第 ${level+1} 关 · ${maps[level].name}`});$('clockText').textContent=`ROUND ${level+1} / 3 · ${Math.ceil(remain)}s`;[...$('badges').children].forEach((e,i)=>e.classList.toggle('on',i<=level))}
 function setupRound(n){level=n;remain=65+n*10;time=0;keys.clear();food.length=0;guards.length=0;effects.length=0;
  for(let i=0;i<2;i++){let p=players[i],nest=maps[n].nest;p.x=globalX(i,nest[0]);p.y=nest[1];p.aimX=p.x;p.aimY=p.y;p.carry=0;p.score=0;p.hp=3;p.auto=false;p.diving=false;p.grip=false;p.stun=0;p.invuln=0;p.stealClock=0;p.candidate=null;p.dragging=null;p.bumpCooldown=0;p.camPrevPinch=false;
-  maps[n].food.forEach((f,j)=>food.push({owner:i,x:globalX(i,f[0]),y:f[1],count:4,regen:0,id:j,heldBy:null,claimedBy:0}));
+  maps[n].food.forEach((f,j)=>food.push({unique:food.length,owner:i,x:globalX(i,f[0]),y:f[1],count:4,regen:0,id:j,heldBy:null,claimedBy:0}));
   maps[n].guards.forEach((g,j)=>guards.push({owner:i,x:globalX(i,g[0]),y:g[1],alert:0,cool:1.5+j*.3,id:j}));
  }
  phase='playing';$('overlay').classList.add('hidden');announce(`第 ${n+1} 关：${maps[n].name}！自己去对方区域捣乱，拖走对方薯条盒！`);updateHUD();sound('start');}
@@ -89,7 +89,7 @@ function update(dt){time+=dt;for(let i=effects.length-1;i>=0;i--){const e=effect
   const [hx,hy]=nestXY(p.id);const tx=p.auto?hx:p.aimX,ty=p.auto?hy:p.aimY;
   if(p.stun<=0){const d=dist(p.x,p.y,tx,ty);if(d>1){const k=Math.min(d,dt*(p.auto?640:460));p.x+=(tx-p.x)/d*k;p.y+=(ty-p.y)/d*k}}
   p.x=clamp(p.x,36,W-36);p.y=clamp(p.y,107,H-42);
-  if(p.auto&&dist(p.x,p.y,hx,hy)<17){p.auto=false;if(p.carry){p.score+=p.carry;announce(`🏡 ${p.id+1}号回巢交货 +${p.carry}！`);sparkle(p.x,p.y,'#ffe190',18);sound('deposit');p.carry=0}}
+  if(p.auto&&dist(p.x,p.y,hx,hy)<17){p.auto=false;if(controlMode==='keyboard'){p.aimX=hx;p.aimY=hy;}if(p.carry){p.score+=p.carry;announce(`🏡 ${p.id+1}号回巢交货 +${p.carry}！`);sparkle(p.x,p.y,'#ffe190',18);sound('deposit');p.carry=0}}
   if(p.diving){
    const nearby=food.filter(f=>f.count>0&&f.heldBy==null&&dist(p.x,p.y,f.x,f.y)<72).sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y))[0];
    if(p.dragging!=null){const f=food.find(q=>q.unique===p.dragging);if(f){f.x=clamp(p.x,34,W-34);f.y=clamp(p.y+29,110,H-55);}else p.dragging=null;}
@@ -150,9 +150,9 @@ function render(now){ctx.clearRect(0,0,W,H);drawBackground(0,now);drawBackground
 // Hand tracking uses a single shared webcam, with two stationary camera halves.
 // This keeps the user/hand mapping stable even if the on-screen gull flies across the dock.
 const handCanvas=$('handCanvas'),hctx=handCanvas.getContext('2d'),video=$('video');
-function cameraStatus(msg,err=false){$('cameraNote').textContent=(err?'⚠️ ':'📷 ')+msg;$('camBadge').textContent=msg.slice(0,31);$('cameraNote').style.color=err?'#c34b46':'#4f6f6b';}
+function cameraStatus(msg,err=false){const text=(err?'⚠️ ':'📷 ')+msg;$('cameraNote').textContent=text;$('camBadge').textContent=msg.slice(0,31);$('cameraNote').style.color=err?'#c34b46':'#4f6f6b';const feedback=$('cameraFeedback');feedback.textContent=text;feedback.classList.toggle('error',err);}
 function showCameraPreview(){ $('livebox').classList.add('active');$('snapFaces').style.display='inline-block';$('cameraBtn').classList.add('on');$('cameraBtn').textContent='📷 关闭摄像头'}
-function closeCamera(){cameraSession++;loadingModel=false;cameraEnabled=false;handTracker?.close?.();handTracker=null;for(const p of players){p.seen=false;p.camPrevPinch=false;if(controlMode==='camera')releaseGrip(p)}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null; $('livebox').classList.remove('active');$('cameraBtn').classList.remove('on');$('cameraBtn').textContent='📷 开启双手摄像头';$('snapFaces').style.display='none';$('retryModel').style.display='none';controlMode='keyboard';updateHUD()}
+function closeCamera(){cameraSession++;loadingModel=false;cameraEnabled=false;handTracker?.close?.();handTracker=null;for(const p of players){p.seen=false;p.camPrevPinch=false;if(controlMode==='camera')releaseGrip(p)}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null; $('livebox').classList.remove('active');$('cameraBtn').classList.remove('on');$('cameraBtn').textContent='📷 开启双手摄像头';$('snapFaces').style.display='none';$('retryModel').style.display='none';controlMode='keyboard';cameraStatus('摄像头已关闭。键盘模式仍可继续试玩。');updateHUD()}
 async function openCamera(){if(cameraEnabled||loadingModel)return;
  if(!navigator.mediaDevices?.getUserMedia){cameraStatus('当前预览环境不能访问摄像头。请用 Chrome 的 localhost 或 HTTPS 页面打开。',true);return}
  const mySession=++cameraSession;cameraStatus('正在向浏览器申请摄像头权限…');$('cameraBtn').disabled=true;
@@ -206,8 +206,6 @@ $('rules').onclick=()=>showModal('HOW TO WIN','两只 <em>坏海鸥</em>','两�
 $('restart').onclick=()=>showModal('RESTART MATCH','再抢一局？','重新开始三轮，累计积分归零。','↻ 确认重开',resetMatch);
 $('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'🔇 音效关':'🔊 音效开';if(!muted){enableAudio();sound('deposit')}else $('audioStatus').textContent='音效关闭'};
 [0,1].forEach(i=>{$('face'+(i+1)).addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;const url=URL.createObjectURL(f),img=new Image();img.onload=()=>{players[i].avatar=img;URL.revokeObjectURL(url);announce(`📸 ${i+1}号真人脸上线！海鸥眉毛和大鸟嘴都还在！`)};img.onerror=()=>{URL.revokeObjectURL(url);announce('图片读取失败，请再选一张')};img.src=url})});
-// Keep each tray identity stable across player drag and capture.
-const originalSetup=setupRound;setupRound=function(n){originalSetup(n);food.forEach((f,i)=>f.unique=i);};
 window.addEventListener('beforeunload',()=>{if(cameraEnabled)closeCamera()});
 requestAnimationFrame(loop);
 })();
