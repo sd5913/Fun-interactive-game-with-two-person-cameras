@@ -27,7 +27,7 @@ Camera mode maps one hand in each half of a shared webcam to the same input loop
 - [x] Headless Chromium keyboard smoke checks completed and screenshots produced (see automated report).
 - [ ] Open and run the demo on the actual classroom laptop; demonstrate one complete steal-and-return loop.
 - [ ] Add actual test evidence (short screen recording / screenshot, tested browser/OS, date).
-- [ ] Confirm updated files are committed to `main` or a PR and record the actual commit/PR URL.
+- [x] Files committed on `tutor-review-2026-11-05` and submitted in [PR #7](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/pull/7).
 - [ ] Confirm issue / board links and owners.
 
 ## What changed / current evidence
@@ -50,15 +50,15 @@ Camera mode maps one hand in each half of a shared webcam to the same input loop
 
 | Evidence | Link or observation | Status |
 | --- | --- | --- |
-| Playable HTML | [`../GIVE_ME_YOUR_FRIES_DUO_GESTURE.html`](../GIVE_ME_YOUR_FRIES_DUO_GESTURE.html) | Local package prepared |
-| README | [`../README.md`](../README.md) | Local package prepared |
-| Headless keyboard smoke test | [`QA_AUTOMATED_SMOKE_REPORT.md`](./QA_AUTOMATED_SMOKE_REPORT.md) | Passed in automated test; real playtest pending |
+| Playable HTML | [`../GIVE_ME_YOUR_FRIES_DUO_GESTURE.html`](../GIVE_ME_YOUR_FRIES_DUO_GESTURE.html) | Submitted in PR #7 |
+| README | [`../README.md`](../README.md) | Submitted in PR #7 |
+| Headless keyboard smoke test | [`QA_AUTOMATED_SMOKE_REPORT.md`](./QA_AUTOMATED_SMOKE_REPORT.md) | Passed in local Google Chrome; real playtest pending |
 | Keyboard gameplay recording | _Add your recording link_ | Pending real-device capture |
 | P1 movement → collection → score update | _Record result, browser, OS, timestamp_ | Pending verification |
 | P2 independent movement | _Record result_ | Pending verification |
 | Webcam preview + two-hand pinch | _Record real-device result_ | Pending verification |
-| PR / commit | _Paste actual GitHub URL after upload_ | Pending |
-| Project item / Issues | _Paste actual URLs_ | Pending |
+| PR / commit | [PR #7](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/pull/7) · [commit `55d840c`](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/commit/55d840c6afa2f16ada045947f79818e449492121) | Open for review |
+| Project item / Issues | [05 Nov review card](https://github.com/orgs/sd5913/projects/8?pane=issue&itemId=286847119) · [#4](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/4) · [#5](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/5) · [#6](https://github.com/sd5913/Fun-interactive-game-with-two-person-cameras/issues/6) | Live links verified; owners still to be confirmed |
 
 ## Current blocker / question for the tutor
 
