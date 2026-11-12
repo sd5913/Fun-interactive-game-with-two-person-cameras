@@ -48,7 +48,7 @@ button.primary,[aria-pressed="true"]{background:var(--gold)}
 .game{background:#75cbd2}
 .ribbon{display:flex;background:#fff0be;border-bottom:3px solid var(--ink)}
 .playerhud{flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:8px 12px}
-.playerhud:nth-child(2){background:#e4f2fc;border-left:2px dashed var(--ink)}
+#playerHud2{background:#e4f2fc;border-left:2px dashed var(--ink)}
 .tag{display:grid;gap:3px;font-size:14px}.tag small{font-size:11px;color:#4d626c}
 .avatarDot{width:35px;height:35px;flex:none}
 .hudNumbers{margin-left:auto;text-align:right;font-size:12px;font-weight:800}
@@ -57,7 +57,14 @@ button.primary,[aria-pressed="true"]{background:var(--gold)}
 .foot{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 15px;background:#fff9e8;border-top:3px solid var(--ink);padding:12px}
 .status{flex:1 1 290px;min-width:0;font-size:14px;font-weight:800}
 .status p{margin:5px 0 0}
-#gameCameraDock:has(.livebox:not([hidden])){width:clamp(170px,24vw,235px);max-width:100%;margin-left:auto}
+.ribbon:has(#gameCameraDock .livebox:not([hidden])){
+  display:grid;grid-template-columns:minmax(0,1fr) clamp(135px,23%,250px) minmax(0,1fr);
+  background:linear-gradient(90deg,#fff0be 50%,#e4f2fc 50%)
+}
+.ribbon:has(#gameCameraDock .livebox:not([hidden])) #playerHud2{border-left:0}
+.ribbon:has(#playerHud2[hidden]){background:#fff0be}
+#gameCameraDock{display:none}
+#gameCameraDock:has(.livebox:not([hidden])){display:block;position:relative;z-index:1;align-self:end;margin:7px 4px -7px}
 .livebox{position:relative;overflow:hidden;border:2px solid var(--ink);border-radius:9px;background:#203649;aspect-ratio:16/9}
 .livebox video,.livebox canvas,.photoGuides{position:absolute;inset:0;width:100%;height:100%}
 .livebox video{transform:scaleX(-1)}
@@ -69,6 +76,11 @@ dialog{width:min(480px,calc(100% - 30px));border:4px solid var(--ink);border-rad
 dialog::backdrop{background:#17283cb5}
 dialog h2{margin:0 0 9px}dialog p{line-height:1.55}
 @media(max-width:650px){.photoGrid{grid-template-columns:1fr}.playerhud{padding:6px;gap:5px;flex-wrap:wrap}.tag{font-size:12px}.tag small,.action{font-size:10px}.avatarDot{width:26px;height:26px}.hudNumbers b{font-size:15px}}
+@media(max-width:500px){
+  .ribbon:has(#gameCameraDock .livebox:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ribbon:has(#playerHud2[hidden]) .playerhud:first-child{grid-column:1/-1}
+  #gameCameraDock:has(.livebox:not([hidden])){grid-column:1/-1;grid-row:2;width:min(45%,185px);justify-self:center;margin-top:1px}
+}
 </style>
 </head>
 <body>
@@ -113,7 +125,7 @@ dialog h2{margin:0 0 9px}dialog p{line-height:1.55}
         <div id="setupCameraDock">
           <div class="livebox" id="livebox" hidden>
             <video id="video" autoplay muted playsinline></video>
-            <canvas id="handCanvas" width="480" height="270" aria-hidden="true"></canvas>
+            <canvas id="handCanvas" width="480" height="270" aria-hidden="true" hidden></canvas>
             <div class="photoGuides" id="photoGuides" aria-hidden="true"><i class="photoGuide" id="guide1"></i><i class="photoGuide blue" id="guide2"></i></div>
             <div class="camLabels" id="camLabels" hidden><span id="camP1">🟡 左侧 P1</span><span id="camP2">🔵 右侧 P2</span></div>
           </div>
@@ -142,6 +154,7 @@ dialog h2{margin:0 0 9px}dialog p{line-height:1.55}
         <span class="tag"><strong>P1 · 金帽海鸥</strong><small id="round1"></small></span>
         <span class="hudNumbers"><b id="score1">0</b> 分 · 脚抓 <span id="carry1">0</span>/4 · <span id="hp1">♥♥♥</span><span class="action" id="action1"></span></span>
       </div>
+      <div id="gameCameraDock"></div>
       <div class="playerhud" id="playerHud2">
         <span class="avatarDot blue"><span>🐤</span><img id="hudPhoto2" alt="" hidden></span>
         <span class="tag"><strong>P2 · 蓝巾海鸥</strong><small id="round2"></small></span>
@@ -160,7 +173,6 @@ dialog h2{margin:0 0 9px}dialog p{line-height:1.55}
           <button id="useKeyboard" hidden>切换键盘</button>
         </div>
       </div>
-      <div id="gameCameraDock"></div>
     </div>
   </section>
 </main>
@@ -291,6 +303,7 @@ function setControl(next) {
   keys.clear();
   for (const p of players) clearTracking(p);
   controlMode = next;
+  handCanvas.hidden = true;
   $('useKeyboard').hidden = next !== 'camera';
   const flightHint = next === 'camera'
     ? (mode === 'solo' ? '在整个镜头内' : '在各自半边镜头内') + '张手飞行，捏合抓取，松手回巢。'
@@ -308,7 +321,7 @@ function setupRound(n) {
   for (const p of activePlayers()) {
     const [x, y] = nestXY(p);
     Object.assign(p, {x, y, aimX:x, aimY:y, carry:0, score:0, hp:3, grip:false, auto:false,
-      stun:0, invuln:0, stealClock:0, bumpCooldown:0, seen:false, pinched:false, openFrames:0});
+      stun:0, invuln:0, stealClock:0, bumpCooldown:0, seen:false, pinched:false, openFrames:0, handTrack:null});
   }
   food = maps[n].food.map(([x, y], id) => ({id, x, y, count:MAX_FRIES, regen:0}));
   guards = maps[n].guards.map(([x, y], id) => ({id, x, y, alert:0, cool:1.5 + id * .3}));
@@ -389,7 +402,7 @@ function releaseGrip(p, returnHome = false) {
   if (returnHome && wasGripping && p.carry > 0) p.auto = true;
 }
 
-function clearTracking(p) {
+function clearTracking(p, rememberHand = false) {
   releaseGrip(p);
   p.auto = false;
   p.aimX = p.x;
@@ -397,6 +410,7 @@ function clearTracking(p) {
   p.seen = false;
   p.pinched = false;
   p.openFrames = 0;
+  if (!rememberHand) p.handTrack = null;
 }
 
 function hit(p, rival) {
@@ -442,8 +456,9 @@ function updatePlayer(p, dt) {
   const targetX = p.auto ? homeX : p.aimX;
   const targetY = p.auto ? homeY : p.aimY;
   const distance = dist(p.x, p.y, targetX, targetY);
+  const flightSpeed = controlMode === 'camera' ? 880 : 460;
   if (p.stun <= 0 && distance > 0) {
-    const amount = Math.min(1, dt * (p.auto ? 640 : 460) / distance);
+    const amount = Math.min(1, dt * (p.auto ? 640 : flightSpeed) / distance);
     p.x += (targetX - p.x) * amount;
     p.y += (targetY - p.y) * amount;
   }
@@ -627,24 +642,29 @@ for (const eventName of ['pointercancel', 'lostpointercapture']) {
   });
 }
 
-function drawBackground(now) {
-  const map = maps[level];
+function drawSea(now) {
+  const {sea:colors} = maps[level];
   const sea = ctx.createLinearGradient(0, 0, 0, H);
-  sea.addColorStop(0, map.sea[0]);
-  sea.addColorStop(1, map.sea[1]);
+  sea.addColorStop(0, colors[0]);
+  sea.addColorStop(1, colors[1]);
   ctx.fillStyle = sea;
   ctx.fillRect(0, 0, W, H);
 
+  ctx.beginPath();
   ctx.strokeStyle = '#ffffff5c';
   ctx.lineWidth = 2.7;
   for (let i = 0; i < 48; i++) {
     const x = ((i * 151 + now * 11 * (i % 2 ? 1 : -1)) % (W + 80) + W + 80) % (W + 80) - 40;
     const y = 50 + (i * 73) % 540;
-    ctx.beginPath();
-    ctx.arc(x, y, 11 + (i % 3) * 6, .2, 2.4);
-    ctx.stroke();
+    const radius = 11 + (i % 3) * 6;
+    ctx.moveTo(x + radius * Math.cos(.2), y + radius * Math.sin(.2));
+    ctx.arc(x, y, radius, .2, 2.4);
   }
+  ctx.stroke();
+}
 
+function drawTerrain() {
+  const map = maps[level];
   for (const poly of map.bridges || []) polygon(poly, '#a37d65', '#364b56', 3);
   for (const poly of map.land) {
     ctx.save();
@@ -765,9 +785,25 @@ function drawBird(p, now) {
   label(p.stun > 0 ? '💫' : 'P' + (p.id + 1), p.x, p.y - 84, 11);
 }
 
+const terrainLayer = document.createElement('canvas');
+terrainLayer.width = W;
+terrainLayer.height = H;
+const terrainCtx = terrainLayer.getContext('2d');
+let terrainLevel = -1;
+let terrainMode;
+
 function render(now) {
-  drawBackground(now);
-  for (const p of activePlayers()) drawNest(p);
+  if (terrainLevel !== level || terrainMode !== mode) {
+    ctx.clearRect(0, 0, W, H);
+    drawTerrain();
+    for (const p of activePlayers()) drawNest(p);
+    terrainCtx.clearRect(0, 0, W, H);
+    terrainCtx.drawImage(canvas, 0, 0);
+    terrainLevel = level;
+    terrainMode = mode;
+  }
+  drawSea(now);
+  ctx.drawImage(terrainLayer, 0, 0);
   for (const f of food) {
     if (trayDrag?.tray !== f) drawFood(f);
   }
@@ -788,6 +824,8 @@ let stream = null, handTracker = null, cameraSession = 0;
 let openingCamera = null, loadingModel = null, starting = false, startRequest = 0;
 let lastTrackTime = -Infinity, lastVideoTime = -1, lastFreshFrame = 0;
 const livebox = $('livebox');
+const trackingFrame = document.createElement('canvas');
+const trackingCtx = trackingFrame.getContext('2d', {alpha:false});
 
 function cameraStatus(message, error = false) {
   for (const node of [$('cameraNote'), $('cameraFeedback')]) {
@@ -863,7 +901,7 @@ function closeCamera() {
   $('cameraBtn').textContent = '📷 开启摄像头';
   $('cameraBtn').disabled = false;
   $('retryModel').hidden = true;
-  hctx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+  handCanvas.hidden = true;
   if (controlMode === 'camera') setControl('keyboard');
   updateSetup();
 }
@@ -887,7 +925,7 @@ function openCamera() {
   openingCamera = (async () => {
     try {
       const media = await navigator.mediaDevices.getUserMedia({
-        audio:false, video:{width:{ideal:960}, height:{ideal:540}, facingMode:'user'}
+        audio:false, video:{width:{ideal:960}, height:{ideal:540}, frameRate:{ideal:30}, facingMode:'user'}
       });
       if (session !== cameraSession) {
         media.getTracks().forEach(track => track.stop());
@@ -991,26 +1029,70 @@ function loadTracker() {
   return loadingModel;
 }
 
-function applyHand(p, hand) {
+function handCandidate(landmarks, category) {
+  const palm = [0, 5, 9, 17];
+  const x = palm.reduce((sum, i) => sum + landmarks[i].x, 0) / palm.length;
+  const y = palm.reduce((sum, i) => sum + landmarks[i].y, 0) / palm.length;
+  return {landmarks, x, y, side:x < .5 ? 0 : 1, handedness:category?.score >= .8 ? category.categoryName : null};
+}
+
+function handMatchCost(player, hand, now) {
+  if (!hand) return .47;
+  const previous = player.handTrack;
+  if (previous && now - previous.time < 240) {
+    const distance = dist(hand.x, hand.y, previous.x, previous.y);
+    const changedHand = previous.handedness && hand.handedness && previous.handedness !== hand.handedness;
+    if (distance < (hand.side === player.id ? .23 : .15)) {
+      return distance + (changedHand ? .14 : 0);
+    }
+  }
+  return hand.side === player.id ? .29 + Math.abs(hand.x - (player.id ? .75 : .25)) * .25 : Infinity;
+}
+
+function assignHands(result, now) {
+  const hands = (result.landmarks || []).map((landmarks, i) => handCandidate(landmarks, result.handedness?.[i]?.[0]));
+  if (mode === 'solo') return [hands[0] || null];
+
+  // Match both tracks together so one detection can't drive both players.
+  const choices = [null, ...hands];
+  let matched = [null, null];
+  let best = Infinity;
+  for (const left of choices) {
+    for (const right of choices) {
+      if (left && left === right) continue;
+      const cost = handMatchCost(players[0], left, now) + handMatchCost(players[1], right, now);
+      if (cost < best) {
+        best = cost;
+        matched = [left, right];
+      }
+    }
+  }
+  return matched;
+}
+
+function applyHand(p, hand, now) {
   if (!hand) {
-    // Loss of tracking is a cancellation. Only a visible release can send a gull home.
-    clearTracking(p);
+    // Keep the track briefly for matching. Stop motion and cancel the pinch immediately.
+    clearTracking(p, true);
     return;
   }
-  const palm = hand[9], mx = 1 - palm.x;
-  const nx = mode === 'solo' ? mx : mx * 2 - p.id;
+  const {landmarks, x, y, handedness} = hand;
+  const nx = mode === 'solo' ? x : x * 2 - p.id;
+  p.handTrack = {x, y, handedness, time:now};
   p.seen = true;
-  p.aimX = 40 + clamp(nx, 0, 1) * (W - 80);
-  p.aimY = 100 + clamp(palm.y, 0, 1) * (H - 145);
+  p.aimX = 40 + clamp((nx - .10) / .80, 0, 1) * (W - 80);
+  p.aimY = 100 + clamp((y - .10) / .80, 0, 1) * (H - 145);
 
-  const palmSize = Math.max(.045, dist(hand[0].x, hand[0].y, hand[17].x, hand[17].y));
-  const gap = dist(hand[4].x, hand[4].y, hand[8].x, hand[8].y) / palmSize;
-  if (!p.pinched && gap < .40) {
+  const aspect = trackingFrame.width / trackingFrame.height;
+  const gapBetween = (i, j) => Math.hypot((landmarks[i].x - landmarks[j].x) * aspect, landmarks[i].y - landmarks[j].y);
+  const palmSize = Math.max(.035, gapBetween(0, 9), gapBetween(5, 17));
+  const gap = gapBetween(4, 8) / palmSize;
+  if (!p.pinched && gap < .43) {
     p.pinched = true;
     if (!p.auto && p.stun <= 0) p.grip = true;
   }
   if (!p.pinched) return;
-  p.openFrames = gap > .57 ? p.openFrames + 1 : 0;
+  p.openFrames = gap > .55 ? p.openFrames + 1 : 0;
   if (p.openFrames >= 2) {
     releaseGrip(p, true);
     p.pinched = false;
@@ -1018,69 +1100,88 @@ function applyHand(p, hand) {
   }
 }
 
-function drawHands(hands) {
+function captureTrackingFrame() {
+  const scale = Math.min(1, 768 / Math.max(video.videoWidth, video.videoHeight));
+  const w = Math.round(video.videoWidth * scale), h = Math.round(video.videoHeight * scale);
+  if (trackingFrame.width !== w || trackingFrame.height !== h) {
+    trackingFrame.width = handCanvas.width = w;
+    trackingFrame.height = handCanvas.height = h;
+  }
+  trackingCtx.setTransform(-1, 0, 0, 1, w, 0);
+  trackingCtx.drawImage(video, 0, 0, w, h);
+}
+
+const handChains = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20],[5,9,13,17]];
+
+function drawTrackingPreview(hands) {
   const w = handCanvas.width, h = handCanvas.height;
-  hctx.clearRect(0, 0, w, h);
+  // The preview and landmarks use the same already mirrored frame.
+  hctx.drawImage(trackingFrame, 0, 0, w, h);
   if (mode === 'duo') {
-    hctx.fillStyle = '#f7dc7926';
-    hctx.fillRect(0, 0, w / 2, h);
-    hctx.fillStyle = '#79bcf72c';
-    hctx.fillRect(w / 2, 0, w / 2, h);
-    hctx.strokeStyle = '#ffffffb0';
-    hctx.setLineDash([5, 4]);
+    hctx.strokeStyle = '#ffffffbf';
+    hctx.lineWidth = 3;
+    hctx.setLineDash([9, 7]);
     hctx.beginPath();
     hctx.moveTo(w / 2, 0);
     hctx.lineTo(w / 2, h);
     hctx.stroke();
     hctx.setLineDash([]);
   }
-  const chains = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20],[5,9,13,17]];
   hands.forEach((hand, i) => {
     if (!hand) return;
-    hctx.strokeStyle = i === 0 ? '#ffe078' : '#86c9ff';
-    hctx.lineWidth = 3;
-    for (const chain of chains) {
-      hctx.beginPath();
+    const color = i === 0 ? '#ffe078' : '#86c9ff';
+    hctx.beginPath();
+    for (const chain of handChains) {
       chain.forEach((index, j) => {
-        const x = (1 - hand[index].x) * w, y = hand[index].y * h;
+        const point = hand.landmarks[index];
+        const x = point.x * w, y = point.y * h;
         if (j === 0) hctx.moveTo(x, y);
         else hctx.lineTo(x, y);
       });
-      hctx.stroke();
+    }
+    hctx.lineCap = 'round';
+    hctx.lineJoin = 'round';
+    hctx.strokeStyle = '#182c42';
+    hctx.lineWidth = 6;
+    hctx.stroke();
+    hctx.strokeStyle = color;
+    hctx.lineWidth = 3.5;
+    hctx.stroke();
+
+    const tips = [hand.landmarks[4], hand.landmarks[8]];
+    if (players[i].grip) {
+      const x = (tips[0].x + tips[1].x) * w / 2;
+      const y = (tips[0].y + tips[1].y) * h / 2;
+      hctx.beginPath();
+      hctx.arc(x, y, 8, 0, TAU);
+      hctx.fillStyle = color;
+      hctx.fill();
     }
   });
+  handCanvas.hidden = false;
 }
 
 function updateCamera(now) {
-  if (controlMode !== 'camera' || !handTracker || now - lastTrackTime < 55) return;
-  lastTrackTime = now;
-  if (video.readyState < 2 || video.currentTime === lastVideoTime) {
+  if (controlMode !== 'camera' || !handTracker || now - lastTrackTime < 30) return;
+  if (video.readyState < 2 || !video.videoWidth || video.currentTime === lastVideoTime) {
     if (now - lastFreshFrame > 200) {
       for (const p of activePlayers()) clearTracking(p);
-      drawHands([]);
+      handCanvas.hidden = true;
     }
     return;
   }
+  lastTrackTime = now;
   lastFreshFrame = now;
   lastVideoTime = video.currentTime;
   try {
-    const found = handTracker.detectForVideo(video, now).landmarks || [];
-    const hands = [null, null];
-    for (const hand of found) {
-      const mx = 1 - hand[9].x;
-      const owner = mode === 'solo' || mx < .5 ? 0 : 1;
-      const center = mode === 'solo' ? .5 : owner === 0 ? .25 : .75;
-      if (!hands[owner] || Math.abs(mx - center) < Math.abs(1 - hands[owner][9].x - center)) {
-        hands[owner] = hand;
-      }
-    }
-    for (const p of activePlayers()) applyHand(p, hands[p.id]);
-    drawHands(hands);
+    captureTrackingFrame();
+    const hands = assignHands(handTracker.detectForVideo(trackingFrame, now), now);
+    for (const p of activePlayers()) applyHand(p, hands[p.id], now);
+    drawTrackingPreview(hands);
   } catch (error) {
     console.warn('Hand tracking stopped', error);
     handTracker.close();
     handTracker = null;
-    drawHands([]);
     setControl('keyboard');
     $('retryModel').hidden = false;
     cameraStatus('手势追踪中断，已切换为键盘。可点击重试。', true);
