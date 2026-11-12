@@ -53,6 +53,7 @@ button.primary,[aria-pressed="true"]{background:var(--gold)}
 .avatarDot{width:35px;height:35px;flex:none}
 .hudNumbers{margin-left:auto;text-align:right;font-size:12px;font-weight:800}
 .hudNumbers b{font-size:18px;color:#a13f36}.action{display:block;font-size:11px;color:#315a70}
+.action.danger{color:#a0202b}
 #gameCanvas{display:block;width:100%;height:auto;touch-action:none}
 .foot{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 15px;background:#fff9e8;border-top:3px solid var(--ink);padding:12px}
 .status{flex:1 1 290px;min-width:0;font-size:14px;font-weight:800}
@@ -192,6 +193,9 @@ const canvas = $('gameCanvas'), ctx = canvas.getContext('2d');
 const video = $('video'), handCanvas = $('handCanvas'), hctx = handCanvas.getContext('2d');
 const W = canvas.width, H = canvas.height, TAU = Math.PI * 2;
 const MAX_FRIES = 4;
+const GUARD_RADIUS = 150;
+const GUARD_WARNING_SECONDS = [1.65, 1.5, 1.35];
+const GUARD_IMPACT_SECONDS = .42;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const dist = (x, y, xx, yy) => Math.hypot(x - xx, y - yy);
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -246,7 +250,7 @@ const players = [0, 1].map(id => ({id, avatar:null, avatarVersion:0, total:0}));
 const playerName = p => p.id === 0 ? '金帽海鸥' : '蓝巾海鸥';
 let mode = 'duo', phase = 'setup', controlMode = 'keyboard';
 let level = 0, remain = 65, time = 0, last = performance.now();
-let food = [], guards = [], effects = [], trayDrag = null;
+let food = [], guards = [], guardAttacks = [], effects = [], trayDrag = null;
 let defaultsAccepted = false, muted = false, audio = null;
 const keys = new Set();
 const activePlayers = () => mode === 'solo' ? [players[0]] : players;
@@ -289,12 +293,16 @@ function updateHUD() {
     $('carry' + j).textContent = p.carry;
     $('hp' + j).textContent = '♥'.repeat(p.hp) + '♡'.repeat(3 - p.hp);
     $('round' + j).textContent = maps[level].name;
+    const warning = guardAttacks.find(attack => !attack.fired && insideGuardCircle(p, attack));
     let action = '键盘操控';
-    if (p.stun > 0) action = '💫 被撞晕';
+    if (warning) action = '⚠️ 飞出红圈 · ' + warningTime(warning) + 's';
+    else if (p.stun > 0) action = '💫 被击晕';
     else if (p.auto) action = '🏠 回巢交货';
     else if (p.grip) action = '🤏 俯冲抓取';
     else if (controlMode === 'camera') action = p.seen ? '🖐️ 飞行' : '等待手入镜';
-    $('action' + j).textContent = action;
+    const actionLabel = $('action' + j);
+    actionLabel.textContent = action;
+    actionLabel.classList.toggle('danger', Boolean(warning));
   }
   $('clockText').textContent = '第 ' + (level + 1) + ' / ' + maps.length + ' 关 · ' + Math.ceil(remain) + ' 秒';
 }
@@ -308,7 +316,7 @@ function setControl(next) {
   const flightHint = next === 'camera'
     ? (mode === 'solo' ? '在整个镜头内' : '在各自半边镜头内') + '张手飞行，捏合抓取，松手回巢。'
     : 'P1 用 WASD 飞行，按住 F 抓取。' + (mode === 'duo' ? 'P2 用方向键飞行，按住 K 抓取。' : '') + '松键回巢。';
-  $('inGameHint').textContent = flightHint + '用鼠标或手指把薯条盒摆在陆地上。';
+  $('inGameHint').textContent = flightHint + '用鼠标或手指把薯条盒摆在陆地上。游客警戒时，倒计时结束前飞出红圈。';
 }
 
 function setupRound(n) {
@@ -318,13 +326,14 @@ function setupRound(n) {
   time = 0;
   keys.clear();
   effects = [];
+  guardAttacks = [];
   for (const p of activePlayers()) {
     const [x, y] = nestXY(p);
     Object.assign(p, {x, y, aimX:x, aimY:y, carry:0, score:0, hp:3, grip:false, auto:false,
       stun:0, invuln:0, stealClock:0, bumpCooldown:0, seen:false, pinched:false, openFrames:0, handTrack:null});
   }
   food = maps[n].food.map(([x, y], id) => ({id, x, y, count:MAX_FRIES, regen:0}));
-  guards = maps[n].guards.map(([x, y], id) => ({id, x, y, alert:0, cool:1.5 + id * .3}));
+  guards = maps[n].guards.map(([x, y], id) => ({id, x, y}));
   phase = 'playing';
   announce('🍟 去码头抓薯条，带回自己的巢计分！');
   updateHUD();
@@ -414,8 +423,8 @@ function clearTracking(p, rememberHand = false) {
 }
 
 function hit(p, rival) {
-  if (p.invuln > 0 || p.hp <= 0) return;
-  p.hp--;
+  if (rival && (p.invuln > 0 || p.hp <= 0)) return;
+  p.hp = Math.max(0, p.hp - 1);
   const dropped = p.carry;
   p.carry = 0;
   releaseGrip(p);
@@ -425,7 +434,8 @@ function hit(p, rival) {
   p.bumpCooldown = 1.5;
   sparkle(p.x, p.y, '#ff7775', 22);
   sound('bonk');
-  announce((rival ? '💥 对手撞到了' : '☂️ 游客拍飞了') + playerName(p) + '，掉落 ' + dropped + ' 根薯条。');
+  const message = (rival ? '💥 对手撞到了' : '💥 游客击中了') + playerName(p);
+  announce(message + (dropped ? '，掉落 ' + dropped + ' 根薯条。' : '！'));
 }
 
 const keyBindings = [
@@ -490,6 +500,7 @@ function updatePlayer(p, dt) {
   sparkle(p.x, p.y + 37, '#ffe39a', 8);
   sound('steal');
   if (p.carry === MAX_FRIES) announce('🍟 ' + playerName(p) + '抓满了，松手回巢！');
+  beginGuardWarning(tray, p);
 }
 
 function nearestTray(p) {
@@ -514,6 +525,54 @@ function bumpPlayers(a, b) {
   hit(attacker === a ? b : a, true);
 }
 
+function insideGuardCircle(player, attack) {
+  return dist(player.x, player.y + 28, attack.x, attack.y) <= GUARD_RADIUS;
+}
+
+function warningTime(attack) {
+  return (Math.ceil(Math.max(0, attack.strikeAt - time) * 10) / 10).toFixed(1);
+}
+
+function beginGuardWarning(tray, player) {
+  const alreadyWarned = guardAttacks.some(attack => !attack.fired && attack.tray === tray &&
+    dist(attack.trayX, attack.trayY, tray.x, tray.y) < GUARD_RADIUS / 2 && insideGuardCircle(player, attack));
+  if (alreadyWarned) return;
+
+  const guard = guards.reduce((nearest, candidate) =>
+    dist(candidate.x, candidate.y, tray.x, tray.y) < dist(nearest.x, nearest.y, tray.x, tray.y)
+      ? candidate : nearest);
+  // Nearby visitors defend their own position. Distant visitors aim toward the gull.
+  const targetY = player.y + 28;
+  const reach = dist(guard.x, guard.y, player.x, targetY);
+  const shift = reach > 92 ? 1 - 92 / reach : 0;
+  const x = guard.x + (player.x - guard.x) * shift;
+  const y = guard.y + (targetY - guard.y) * shift;
+  guardAttacks.push({guard, tray, trayX:tray.x, trayY:tray.y, x, y,
+    strikeAt:time + GUARD_WARNING_SECONDS[level], fired:false});
+  announce('⚠️ 游客发现了偷薯条的海鸥！倒计时结束前飞出红圈。');
+  tone(470, .11, 'square', .045, 1.28);
+  tone(685, .15, 'square', .035, .85, .11);
+  updateHUD();
+}
+
+function updateGuardAttacks(active) {
+  const struck = new Set();
+  for (let i = guardAttacks.length - 1; i >= 0; i--) {
+    const attack = guardAttacks[i];
+    if (!attack.fired && time >= attack.strikeAt) {
+      attack.fired = true;
+      sparkle(attack.x, attack.y, '#fff0bd', 16);
+      tone(175, .23, 'sawtooth', .07, .52);
+      for (const p of active) {
+        if (insideGuardCircle(p, attack)) struck.add(p);
+      }
+    }
+    if (time >= attack.strikeAt + GUARD_IMPACT_SECONDS) guardAttacks.splice(i, 1);
+  }
+  for (const p of struck) hit(p, false);
+  if (struck.size) updateHUD();
+}
+
 function update(dt) {
   if (phase !== 'playing') return;
   time += dt;
@@ -533,6 +592,7 @@ function update(dt) {
   }
   const active = activePlayers();
   for (const p of active) updatePlayer(p, dt);
+  if (guardAttacks.length) updateGuardAttacks(active);
   if (mode === 'duo') bumpPlayers(...active);
   for (const f of food) {
     if (f.count > 0) continue;
@@ -540,18 +600,6 @@ function update(dt) {
     if (f.regen <= 0) {
       f.count = MAX_FRIES;
       sparkle(f.x, f.y, '#fff2a2', 8);
-    }
-  }
-  for (const g of guards) {
-    g.cool = Math.max(0, g.cool - dt);
-    const target = g.cool === 0 && active.find(p =>
-      p.grip && p.invuln === 0 && p.hp > 0 && dist(g.x, g.y, p.x, p.y) < 111
-    );
-    g.alert = Math.max(0, g.alert + dt * (target ? .85 + level * .16 : -.5));
-    if (target && g.alert > 1.05) {
-      hit(target, false);
-      g.cool = 2.2;
-      g.alert = 0;
     }
   }
   if (Math.floor(time * 8) !== Math.floor((time - dt) * 8)) updateHUD();
@@ -710,7 +758,76 @@ function drawFood(f, x = f.x, y = f.y) {
   label(f.count ? 'FRIES' : '···', 1, 4, f.count ? 11 : 19, '#fff6da');
   ctx.restore();
 }
-function drawGuard(g){const x=g.x,y=g.y;ctx.save();ctx.translate(x,y);oval(0,23,30,9,'#6953454f');ln(-13,14,-15,32,'#38485b',5);ln(12,14,15,32,'#38485b',5);rr(-25,-4,50,31,10,g.id%2?'#72c8bf':'#f2907b','#2c4456',2.5);oval(0,-22,22,24,'#ffdab8','#2c4456',3);oval(-8,-25,2.7,3.5,'#2c4456');oval(9,-25,2.7,3.5,'#2c4456');ln(-6,-11,8,-11,'#a55e52',2);if(g.id%2){label('💦',35,-20,27)}else{ln(19,-8,41,-45,'#41526a',4);oval(42,-48,31,13,'#f47774','#253d55',3)}ctx.restore();if(g.alert>0){ctx.beginPath();ctx.arc(x,y-12,43,-Math.PI/2,-Math.PI/2+TAU*g.alert/1.05);ctx.strokeStyle='#f34e58';ctx.lineWidth=6;ctx.stroke()}}
+function drawGuardZone(attack) {
+  const {x, y, guard, strikeAt, fired} = attack;
+  if (fired) {
+    const progress = clamp((time - strikeAt) / GUARD_IMPACT_SECONDS, 0, 1);
+    const wave = GUARD_RADIUS * (.35 + .65 * progress);
+    ctx.save();
+    ctx.globalAlpha = 1 - progress;
+    oval(x, y, GUARD_RADIUS, GUARD_RADIUS, '#f5464770', '#a82332', 6);
+    oval(x, y, wave, wave, '#ffc37527', '#fff1cc', 6);
+    ctx.restore();
+    return;
+  }
+
+  if (dist(guard.x, guard.y, x, y) > 20) {
+    ctx.save();
+    ctx.setLineDash([8, 6]);
+    ln(guard.x, guard.y, x, y, '#8f2332b0', 3);
+    ctx.restore();
+  }
+  const elapsed = clamp(1 - (strikeAt - time) / GUARD_WARNING_SECONDS[level], 0, 1);
+  const fill = 'rgba(218,41,54,' + (.17 + elapsed * .16) + ')';
+  oval(x, y, GUARD_RADIUS, GUARD_RADIUS, fill, '#fff1db', 8);
+  oval(x, y, GUARD_RADIUS, GUARD_RADIUS, 'transparent', '#b52539', 4.5);
+  ctx.beginPath();
+  ctx.arc(x, y, GUARD_RADIUS - 7, -TAU / 4, -TAU / 4 + elapsed * TAU);
+  ctx.strokeStyle = '#d82e42';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+}
+
+function drawGuardCue(attack) {
+  const {x, y, guard, strikeAt, fired} = attack;
+  if (!fired && strikeAt - time < .25 && dist(guard.x, guard.y, x, y) > 28) {
+    const progress = clamp(1 - (strikeAt - time) / .25, 0, 1);
+    const fromY = guard.y - 34;
+    const propX = guard.x + (x - guard.x) * progress;
+    const propY = fromY + (y - fromY) * progress - Math.sin(progress * Math.PI) * 29;
+    label(guard.id % 2 ? '💦' : '☂️', propX, propY, 26);
+  }
+  const badgeX = clamp(x, 90, W - 90);
+  const badgeY = clamp(y - GUARD_RADIUS + 26, 29, H - 23);
+  rr(badgeX - 69, badgeY - 14, 138, 28, 8, '#9b2636', '#fff0d5', 2.3);
+  label(fired ? '游客攻击！' : '飞出红圈 ' + warningTime(attack) + 's', badgeX, badgeY, 15, '#fff7e9');
+}
+
+function drawGuard(g) {
+  const {x, y} = g;
+  const alert = guardAttacks.some(attack => attack.guard === g);
+  ctx.save();
+  ctx.translate(x, y);
+  oval(0, 23, 30, 9, '#6953454f');
+  ln(-13, 14, -15, 32, '#38485b', 5);
+  ln(12, 14, 15, 32, '#38485b', 5);
+  rr(-25, -4, 50, 31, 10, g.id % 2 ? '#72c8bf' : '#f2907b', '#2c4456', 2.5);
+  oval(0, -22, 22, 24, '#ffdab8', '#2c4456', 3);
+  oval(-8, -25, 2.7, 3.5, '#2c4456');
+  oval(9, -25, 2.7, 3.5, '#2c4456');
+  ln(-6, -11, 8, -11, '#a55e52', 2);
+  if (g.id % 2) {
+    label('💦', 35, -20, 27);
+  } else {
+    ln(19, -8, 41, -45, '#41526a', 4);
+    oval(42, -48, 31, 13, '#f47774', '#253d55', 3);
+  }
+  if (alert) {
+    oval(0, -57, 13, 13, '#b52539', '#fff0db', 2.5);
+    label('!', 0, -56, 20, '#fff7e9');
+  }
+  ctx.restore();
+}
 
 function drawBird(p, now) {
   ctx.save();
@@ -804,12 +921,14 @@ function render(now) {
   }
   drawSea(now);
   ctx.drawImage(terrainLayer, 0, 0);
+  for (const attack of guardAttacks) drawGuardZone(attack);
   for (const f of food) {
     if (trayDrag?.tray !== f) drawFood(f);
   }
   for (const g of guards) drawGuard(g);
   for (const p of activePlayers()) drawBird(p, now);
   for (const e of effects) oval(e.x, e.y, e.r, e.r * .9, e.color);
+  for (const attack of guardAttacks) drawGuardCue(attack);
   if (trayDrag) {
     const {tray, x, y, valid} = trayDrag;
     ctx.save();
@@ -1313,6 +1432,7 @@ $('rules').onclick = () => {
   pauseGame();
   const controlTip = mode === 'duo' ? '双人各用镜头一侧，共用一张地图；俯冲可撞掉对手抓到的薯条。' : '单人使用整幅镜头，避开码头游客。';
   showDialog('玩法', '张手移动，捏合抓薯条，手留在镜头内松开就会回巢。' + controlTip +
+    '抓到薯条会引起游客警戒。倒计时结束前飞出红圈。被击中会掉光脚上的薯条，已带回巢的分数保留。' +
     '薯条盒可用鼠标或触屏在陆地上摆放。' + $('inGameHint').textContent.split('用鼠标')[0],
     '继续游戏', () => { phase = 'playing'; }, true);
   $('dialogClose').hidden = true;
